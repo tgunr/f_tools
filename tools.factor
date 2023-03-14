@@ -11,7 +11,7 @@ prettyprint sequences ;
 IN: io.directories
 :: force-file-into ( from to -- )
     from to to-directory :> to
-    to exists?
+    to file-exists?
     [ "rm -fr " to append  system drop ] when
     from to move-file  drop ;
 
@@ -27,7 +27,7 @@ CONSTANT: gitFolder "/Sources/PlayNet/ww2"
     srcFolder string-to-folder ; 
 
 :: mv-entries ( entries dst -- )
-    entries [ path+name ] map  dst force-files-into ;
+    entries [ pathnameRead ] map  dst force-files-into ;
 
 :: update-git ( entry -- )
     entry name>> :> gitName
@@ -37,20 +37,34 @@ CONSTANT: gitFolder "/Sources/PlayNet/ww2"
 
 :: do-entry ( entry -- )
     entry is-directory?
-    [ entry path+name pprint
+    [ entry pathnameRead pprint
       entry folder-entries  gitFolder mv-entries
       entry update-git
-      entry path+name "rm -fr " prepend  system drop ] when
+      entry pathnameRead "rm -fr " prepend  system drop ] when
     ;
 
 : do-src-folders ( -- )
-    src-folder [ do-entry ] with-folder-entries ; 
+    src-folder [ do-entry ] with-folder ; 
 
-: file-entries ( folder -- file )
-    dup is-directory? [ [ file-entries ] with-folder-entries ] when ;
+! : file-entries ( folder -- file )
+!     dup is-directory?
+!     [ [ file-entries ] with-folder ]
+!     [ drop f ]
+!     if ;
 
-: flatten-folder ( path -- seq )
-    string-to-folder  file-entries ;
+: flatten-folder ( entry -- entries )
+    { } swap [
+        dup is-directory? 
+        [ entries>>
+          [ flatten-folder suffix ] each ]
+        [ suffix ]
+        if
+    ] with-folder ;
+
+FROM: string => to-folder-tree ;
+: flatten-path ( path -- seq )
+    to-folder-tree
+    flatten-folder ;
 
 : test ( -- seq )
     "/usr" flatten-folder ; 
